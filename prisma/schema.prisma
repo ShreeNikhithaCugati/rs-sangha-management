@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  password     String
+  name         String
+  phone        String?
+  role         Role     @default(MEMBER)
+  isVerified   Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  otp          String?
+  otpExpiry    DateTime?
+  isProfileComplete Boolean @default(false)
+  
+  sangha       Sangha?  @relation("SanghaAdmin", fields: [sanghaId], references: [id])
+  sanghaId     String?  @unique
+  members      Member[] @relation("AdminMembers")
+  sanghaRequests SanghaRequest[]
+}
+
+model Sangha {
+  id           String   @id @default(cuid())
+  sanghaId     String   @unique
+  name         String   @unique
+  code         String   @unique
+  address      String?
+  state        String?
+  country      String?
+  city         String?
+  district     String?
+  town         String?
+  village      String?
+  date         DateTime?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  membersCount Int      @default(0)
+  
+  admin        User?    @relation("SanghaAdmin")
+  members      Member[]
+}
+
+model Member {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  address      String?
+  aadharNumber String?
+  photo        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  sanghaId     String
+  sangha       Sangha   @relation(fields: [sanghaId], references: [id])
+  adminId      String
+  admin        User     @relation("AdminMembers", fields: [adminId], references: [id])
+}
+
+model SanghaRequest {
+  id              String   @id @default(cuid())
+  adminId         String
+  admin           User     @relation(fields: [adminId], references: [id])
+  
+  sanghaName      String
+  state           String
+  country         String
+  city            String
+  district        String
+  town            String?
+  village         String?
+  address         String
+  
+  adminName       String
+  adminEmail      String
+  adminPhone      String
+  adminAddress    String
+  aadharNumber    String
+  photo           String?
+  
+  status          RequestStatus @default(PENDING)
+  rejectedReason  String?
+  assignedSanghaId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  reviewedAt      DateTime?
+  reviewedBy      String?
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  MEMBER
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

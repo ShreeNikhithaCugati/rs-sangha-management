@@ -4,23 +4,40 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:debug": "set NODE_OPTIONS=--inspect&&next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "next lint"
   },
   "dependencies": {
-    "next": "16.2.10",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.6.1",
+    "jose": "^6.2.3",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "next": "14.2.5",
+    "next-pwa": "^5.6.0",
+    "nodemailer": "^6.10.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "twilio": "^6.0.2"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.10",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@prisma/client": "^5.18.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.11.0",
+    "@types/nodemailer": "^6.4.24",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.5.2",
+    "cross-env": "^10.1.0",
+    "postcss": "^8.5.16",
+    "prisma": "^5.18.0",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.3.3"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   }
 }
