@@ -49,67 +49,88 @@ export default function RequestDetailsPage() {
   }, [])
 
   const fetchRequestDetails = async () => {
-    try {
-      const response = await fetch(`/api/superadmin/sangha-requests/${id}`)
-      const data = await response.json()
-      setRequest(data)
-    } catch (error) {
-      console.error('Error fetching request details:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleApprove = async () => {
-    const sanghaId = prompt('Enter Sangha ID for this admin (or leave blank for auto-generate):')
-    if (sanghaId === null) return
+  try {
+    const token = localStorage.getItem('token')
     
-    try {
-      const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve', sanghaId: sanghaId || undefined }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        alert(`✅ ${data.message}`)
-        router.push('/dashboard/superadmin/requests')
-      } else {
-        alert('❌ ' + data.error)
-      }
-    } catch (error) {
-      console.error('Error approving request:', error)
-      alert('❌ Error approving request')
+    if (!token) {
+      router.push('/login')
+      return
     }
-  }
 
-  const handleReject = async () => {
-    const reason = prompt('Enter reason for rejection:')
-    if (!reason) return
-
-    try {
-      const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reject', rejectedReason: reason }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        alert(`✅ ${data.message}`)
-        router.push('/dashboard/superadmin/requests')
-      } else {
-        alert('❌ ' + data.error)
+    const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
-    } catch (error) {
-      console.error('Error rejecting request:', error)
-      alert('❌ Error rejecting request')
-    }
+    })
+    
+    const data = await response.json()
+    setRequest(data)
+  } catch (error) {
+    console.error('Error fetching request details:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
+const handleApprove = async () => {
+  const sanghaId = prompt('Enter Sangha ID for this admin (or leave blank for auto-generate):')
+  if (sanghaId === null) return
+  
+  try {
+    const token = localStorage.getItem('token')
+    
+    const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ action: 'approve', sanghaId: sanghaId || undefined }),
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      alert(`✅ ${data.message}`)
+      router.push('/dashboard/superadmin/requests')
+    } else {
+      alert('❌ ' + data.error)
+    }
+  } catch (error) {
+    console.error('Error approving request:', error)
+    alert('❌ Error approving request')
+  }
+}
+
+const handleReject = async () => {
+  const reason = prompt('Enter reason for rejection:')
+  if (!reason) return
+
+  try {
+    const token = localStorage.getItem('token')
+    
+    const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ action: 'reject', rejectedReason: reason }),
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      alert(`✅ ${data.message}`)
+      router.push('/dashboard/superadmin/requests')
+    } else {
+      alert('❌ ' + data.error)
+    }
+  } catch (error) {
+    console.error('Error rejecting request:', error)
+    alert('❌ Error rejecting request')
+  }
+}
   if (loading) {
     return (
       <div style={{

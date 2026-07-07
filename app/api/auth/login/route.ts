@@ -1,15 +1,12 @@
-// app/api/auth/login/route.ts
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { comparePassword, generateToken } from '@/lib/auth'
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { identifier, password, role, sanghaId } = await request.json()
+    const { identifier, password, role, sanghaId } = await req.json()
 
-    console.log('🔍 Login attempt:', { identifier, role })
-
-    // Find user
+    // Find user by email or username
     const user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -17,110 +14,114 @@ export async function POST(request: NextRequest) {
           { username: identifier }
         ]
       },
-      include: {
-        sangha: true
-      }
+      include: { sangha: true }
     })
-    
+
     if (!user) {
-      console.log('❌ User not found:', identifier)
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       )
     }
 
-    console.log('👤 User found:', { email: user.email, role: user.role })
-
-    // Check role
-    if (user.role !== role) {
-      console.log('❌ Role mismatch:', { userRole: user.role, selectedRole: role })
+    // Check password
+    const isValid = await comparePassword(password, user.password)
+    if (!isValid) {
       return NextResponse.json(
-        { error: `Invalid role. You are registered as ${user.role}.` },
+        { error: 'Invalid credentials' },
         { status: 401 }
       )
     }
 
-    // Check if active
-    if (!user.isActive) {
+    // Check role matches
+    if (user.role !== role) {
       return NextResponse.json(
-        { error: 'Account is blocked. Please contact support.' },
+        { error: `Invalid role. You are registered as ${user.role}` },
         { status: 403 }
       )
     }
 
-    // Check Sangha ID for Admin
+    // ✅ If user is ADMIN, check Sangha ID
     if (user.role === 'ADMIN') {
+      // Check if admin has a pending request
+      const pendingRequest = await prisma.sanghaRequest.findFirst({
+        where: {
+          adminId: user.id,
+          status: 'PENDING'
+        }
+      })
+
+      // If admin has pending request, don't allow login
+      if (pendingRequest) {
+        return NextResponse.json(
+          { error: 'Your Sangha request is pending approval. Please wait for SuperAdmin to approve.' },
+          { status: 403 }
+        )
+      }
+
+      // If admin doesn't have sanghaId and no pending request, they need to submit form
+      if (!user.sanghaId) {
+        return NextResponse.json({
+          error: 'Please complete your Sangha registration form first.',
+          redirectTo: '/admin/submit-form'
+        }, { status: 403 })
+      }
+
+      // ✅ Admin must enter Sangha ID to login
       if (!sanghaId) {
         return NextResponse.json(
-          { error: 'Sangha ID is required for Admin login' },
+          { error: 'Please enter your Sangha ID to login.' },
           { status: 400 }
         )
       }
 
-      const sangha = await prisma.sangha.findFirst({
-        where: {
-          sanghaId: sanghaId.toUpperCase(),
-          adminId: user.id,
-        }
-      })
-
-      if (!sangha) {
-        console.log('❌ Invalid Sangha ID for admin:', sanghaId)
+      // Verify Sangha ID matches
+      if (user.sangha?.sanghaId !== sanghaId.toUpperCase()) {
         return NextResponse.json(
-          { error: 'Invalid Sangha ID. Please check with Super Admin.' },
-          { status: 401 }
+          { error: 'Invalid Sangha ID. Please check and try again.' },
+          { status: 400 }
+        )
+      }
+
+      // Check if Sangha is active
+      if (user.sangha && !user.sangha.isActive) {
+        return NextResponse.json(
+          { error: 'Your Sangha has been deactivated. Please contact SuperAdmin.' },
+          { status: 403 }
         )
       }
     }
 
-    // Verify password
-    const isValidPassword = await comparePassword(password, user.password)
-    if (!isValidPassword) {
-      console.log('❌ Invalid password for:', identifier)
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      )
-    }
-
-    // Generate token with await
+    // Generate token
     const token = await generateToken(user.id, user.email, user.role)
 
-    console.log('✅ Login successful for:', user.email)
-
-    // Prepare user data (exclude password)
-    const { password: _, ...userWithoutPassword } = user
-
-    // Create response with JSON body AND set cookie
     const response = NextResponse.json({
       success: true,
-      token: token,
-      user: userWithoutPassword,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        sanghaId: user.sangha?.sanghaId || null,
+        isProfileComplete: user.isProfileComplete || false
+      }
     })
 
-    // ✅ Set cookie with more explicit options
+    // Set cookie for middleware
     response.cookies.set('token', token, {
       httpOnly: true,
-      secure: false, // Set to false for local development
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
+      maxAge: 60 * 60 * 24 * 7 // 7 days
     })
 
-    // ✅ Add CORS headers for debugging
-    response.headers.set('Access-Control-Allow-Credentials', 'true')
-    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000')
-
-    console.log('✅ Token sent in response and cookie set')
-    console.log('🔑 Token preview:', token.substring(0, 20) + '...')
-
     return response
-
   } catch (error) {
-    console.error('❌ Login error:', error)
+    console.error('Login error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Something went wrong' },
       { status: 500 }
     )
   }

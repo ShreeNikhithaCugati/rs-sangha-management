@@ -4,12 +4,14 @@ import { verifyToken } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value
+    const authHeader = request.headers.get('Authorization')
+    const token = authHeader?.split(' ')[1]
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
       adminName, adminEmail, adminPhone, adminAddress, aadharNumber, photo
     } = await request.json()
 
-    // ✅ CORRECT: sanghaRequest (with 'g')
+    // Check if already has pending request
     const existingRequest = await prisma.sanghaRequest.findFirst({
       where: {
         adminId: decoded.userId,
@@ -42,7 +44,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ✅ CORRECT: sanghaRequest (with 'g')
     const sanghaRequest = await prisma.sanghaRequest.create({
       data: {
         adminId: decoded.userId,
@@ -51,15 +52,15 @@ export async function POST(request: NextRequest) {
         country,
         city,
         district,
-        town,
-        village,
+        town: town || null,
+        village: village || null,
         address,
         adminName,
         adminEmail,
         adminPhone,
         adminAddress,
         aadharNumber,
-        photo,
+        photo: photo || null,
         status: 'PENDING',
       },
     })

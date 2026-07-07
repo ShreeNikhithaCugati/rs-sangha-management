@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'  // ✅ Changed from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('Authorization')
     const token = authHeader?.split(' ')[1]
+
+    console.log('🔑 Auth header:', authHeader ? 'Present' : 'Missing')
+    console.log('🔑 Token:', token ? token.substring(0, 20) + '...' : 'Missing')
 
     if (!token) {
       return NextResponse.json(
@@ -15,6 +18,8 @@ export async function GET(req: Request) {
     }
 
     const decoded = await verifyToken(token)
+    console.log('👤 Decoded user:', decoded)
+
     if (!decoded) {
       return NextResponse.json(
         { error: 'Unauthorized - Invalid token' },
@@ -23,33 +28,29 @@ export async function GET(req: Request) {
     }
 
     if (decoded.role !== 'SUPERADMIN') {
+      console.log('❌ User role is not SUPERADMIN:', decoded.role)
       return NextResponse.json(
         { error: 'Forbidden - Insufficient permissions' },
         { status: 403 }
       )
     }
 
-    let requests = []
-    try {
-      requests = await prisma.sanghaRequest.findMany({
-        where: { status: 'PENDING' },
-        include: {
-          admin: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              username: true
-            }
+    const requests = await prisma.sanghaRequest.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        admin: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            username: true
           }
-        },
-        orderBy: { createdAt: 'desc' }
-      })
-    } catch (error) {
-      console.warn('⚠️ SanghaRequest model not found. Returning empty array.')
-      requests = []
-    }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
 
+    console.log(`✅ Found ${requests.length} pending requests`)
     return NextResponse.json(requests)
   } catch (error) {
     console.error('Error fetching sangha requests:', error)
@@ -82,34 +83,23 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     
-    let request
-    try {
-      request = await prisma.sanghaRequest.create({
-        data: {
-          sanghaName: body.sanghaName,
-          state: body.state,
-          country: body.country,
-          city: body.city,
-          district: body.district,
-          address: body.address,
-          adminName: body.adminName,
-          adminEmail: body.adminEmail,
-          adminPhone: body.adminPhone,
-          adminAddress: body.adminAddress,
-          aadharNumber: body.aadharNumber,
-          adminId: body.adminId,
-          status: 'PENDING'
-        }
-      })
-    } catch (error) {
-      console.warn('⚠️ SanghaRequest model not found. Mock creation.')
-      return NextResponse.json({
-        id: 'mock_' + Date.now(),
-        ...body,
-        status: 'PENDING',
-        message: 'Mock request created (SanghaRequest model not found)'
-      }, { status: 201 })
-    }
+    const request = await prisma.sanghaRequest.create({
+      data: {
+        sanghaName: body.sanghaName,
+        state: body.state,
+        country: body.country,
+        city: body.city,
+        district: body.district,
+        address: body.address,
+        adminName: body.adminName,
+        adminEmail: body.adminEmail,
+        adminPhone: body.adminPhone,
+        adminAddress: body.adminAddress,
+        aadharNumber: body.aadharNumber,
+        adminId: body.adminId,
+        status: 'PENDING'
+      }
+    })
 
     return NextResponse.json(request, { status: 201 })
   } catch (error) {

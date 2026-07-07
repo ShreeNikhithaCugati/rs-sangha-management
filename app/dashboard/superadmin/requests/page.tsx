@@ -31,7 +31,10 @@ export default function SanghaRequestsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const token = document.cookie.split('; ').find(row => row.startsWith('token='))
+    // ✅ Check localStorage for token
+    const token = localStorage.getItem('token')
+    console.log('🔍 Token from localStorage:', token ? 'Yes' : 'No')
+    
     if (!token) {
       router.push('/login')
       return
@@ -40,49 +43,51 @@ export default function SanghaRequestsPage() {
   }, [])
 
   const fetchRequests = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    
-    if (!token) {
-      console.log('❌ No token found')
-      router.push('/login')
-      return
-    }
-
-    const response = await fetch('/api/superadmin/sangha-requests', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-
-    console.log('📊 Response status:', response.status)
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error('❌ API Error:', errorData)
+    try {
+      const token = localStorage.getItem('token')
       
-      // If unauthorized, redirect to login
+      if (!token) {
+        console.log('❌ No token found')
+        router.push('/login')
+        return
+      }
+
+      console.log('🔑 Fetching requests with token:', token.substring(0, 20) + '...')
+
+      const response = await fetch('/api/superadmin/sangha-requests', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('📊 Response status:', response.status)
+
       if (response.status === 401 || response.status === 403) {
+        console.log('❌ Unauthorized, redirecting to login')
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         router.push('/login')
         return
       }
-      
-      throw new Error(errorData.error || 'Failed to fetch requests')
-    }
 
-    const data = await response.json()
-    console.log('✅ Requests fetched:', data)
-    setRequests(Array.isArray(data) ? data : [])
-  } catch (error) {
-    console.error('❌ Error fetching requests:', error)
-    // Don't redirect, just show empty state
-    setRequests([])
-  } finally {
-    setLoading(false)
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ API Error:', errorData)
+        setRequests([])
+        return
+      }
+
+      const data = await response.json()
+      console.log('✅ Requests fetched:', data)
+      setRequests(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('❌ Error fetching requests:', error)
+      setRequests([])
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   if (loading) {
     return (

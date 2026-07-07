@@ -1,13 +1,11 @@
 {
-  "name": "RS Associates Sangha Management",
-  "short_name": "RS Associates",
-  "description": "Complete Sangha Management Application",
+  "name": "RS Sangha Management",
+  "short_name": "RS Sangha",
+  "description": "Sangha Management System",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#4F46E5",
-  "background_color": "#ffffff",
-  "orientation": "portrait",
-  "categories": ["business", "productivity"],
+  "background_color": "#1e1b4b",
+  "theme_color": "#4c1d95",
   "icons": [
     {
       "src": "/icon-192x192.png",

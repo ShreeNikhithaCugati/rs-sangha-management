@@ -9,17 +9,35 @@ const transporter = nodemailer.createTransport({
 })
 
 export const sendOTPEmail = async (email: string, otp: string): Promise<void> => {
+  // ✅ Ensure OTP is string
+  const otpString = String(otp).padStart(6, '0')
+  
   const mailOptions = {
     from: `"RS Associates" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'RS Associates - Email Verification OTP',
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #4F46E5;">Welcome to RS Associates!</h2>
-        <p>Your OTP for email verification is:</p>
-        <h1 style="font-size: 32px; color: #4F46E5; letter-spacing: 4px; text-align: center;">${otp}</h1>
-        <p>This OTP will expire in 10 minutes.</p>
-        <p>If you didn't request this, please ignore this email.</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9;">
+        <div style="background: linear-gradient(135deg, #1e1b4b, #4c1d95); padding: 20px; border-radius: 8px; text-align: center;">
+          <h1 style="color: white; margin: 0;">RS Associates</h1>
+          <p style="color: #a5b4fc; margin: 5px 0;">Email Verification</p>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 8px; margin-top: 20px;">
+          <p style="font-size: 16px; color: #333;">Hello,</p>
+          <p style="font-size: 16px; color: #333;">Your OTP for email verification is:</p>
+          
+          <div style="text-align: center; padding: 20px; margin: 20px 0; background: #f3f4f6; border-radius: 8px;">
+            <h1 style="font-size: 48px; color: #4c1d95; letter-spacing: 8px; margin: 0;">${otpString}</h1>
+          </div>
+          
+          <p style="font-size: 14px; color: #666;">This OTP will expire in <strong>10 minutes</strong>.</p>
+          <p style="font-size: 14px; color: #666;">If you didn't request this, please ignore this email.</p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+          <p>© 2026 RS Associates. All rights reserved.</p>
+        </div>
       </div>
     `,
   }
@@ -28,6 +46,7 @@ export const sendOTPEmail = async (email: string, otp: string): Promise<void> =>
 }
 
 export const generateOTP = (): string => {
+  // ✅ Return as string with leading zeros if needed
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
@@ -67,10 +86,6 @@ export const sendApprovalEmail = async (email: string, name: string, sanghaId: s
               5. Enter your <strong>Sangha ID</strong>: ${sanghaId}
             </p>
           </div>
-          
-          <p style="color: #475569; font-size: 14px; line-height: 1.6;">
-            You can now login to your dashboard and start managing your Sangha.
-          </p>
         </div>
         
         <div style="text-align: center; padding: 20px 0; color: #94a3b8; font-size: 12px;">
@@ -82,34 +97,6 @@ export const sendApprovalEmail = async (email: string, name: string, sanghaId: s
   }
 
   await transporter.sendMail(mailOptions)
-}
-
-// ✅ APPROVAL SMS WITH SANGHA ID (Using Twilio)
-export const sendApprovalSMS = async (phone: string, sanghaId: string, name: string) => {
-  try {
-    // You need to install twilio: npm install twilio
-    // And add these to .env:
-    // TWILIO_ACCOUNT_SID=your_account_sid
-    // TWILIO_AUTH_TOKEN=your_auth_token
-    // TWILIO_PHONE_NUMBER=your_twilio_phone_number
-    
-    const twilio = require('twilio')
-    const client = twilio(
-      process.env.TWILIO_ACCOUNT_SID!,
-      process.env.TWILIO_AUTH_TOKEN!
-    )
-    
-    await client.messages.create({
-      body: `🎉 ${name}, your Sangha has been approved! Your Sangha ID is: ${sanghaId}. Please login with your username and this ID. - RS Associates`,
-      to: phone,
-      from: process.env.TWILIO_PHONE_NUMBER!,
-    })
-    
-    console.log(`✅ SMS sent to ${phone} with Sangha ID: ${sanghaId}`)
-  } catch (error) {
-    console.error('❌ SMS sending failed:', error)
-    // Don't throw error - email is more important
-  }
 }
 
 export const sendRejectionEmail = async (email: string, name: string, reason: string) => {

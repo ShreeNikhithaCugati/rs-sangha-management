@@ -28,10 +28,25 @@ export default function SubmitFormPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const token = document.cookie.split('; ').find(row => row.startsWith('token='))
+    const token = localStorage.getItem('token')
     if (!token) {
       router.push('/login')
       return
+    }
+
+    // Pre-fill admin details from user
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        setFormData(prev => ({
+          ...prev,
+          adminName: user.name || '',
+          adminEmail: user.email || '',
+        }))
+      } catch (e) {
+        console.error('Error parsing user:', e)
+      }
     }
   }, [])
 
@@ -54,6 +69,13 @@ export default function SubmitFormPage() {
     setError('')
 
     try {
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        router.push('/login')
+        return
+      }
+
       let photoUrl = ''
       if (photoFile) {
         const photoFormData = new FormData()
@@ -71,7 +93,10 @@ export default function SubmitFormPage() {
 
       const response = await fetch('/api/admin/sangha-request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // ✅ Add token
+        },
         body: JSON.stringify({
           ...formData,
           photo: photoUrl,

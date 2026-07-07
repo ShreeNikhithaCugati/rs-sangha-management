@@ -4,12 +4,14 @@ import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value
+    const authHeader = request.headers.get('Authorization')
+    const token = authHeader?.split(' ')[1]
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
       where: { id: decoded.userId },
       include: {
         sangha: true,
-        sanghaRequests: true, // ✅ CORRECT: sanghaRequests (plural, with 'g')
+        sanghaRequests: true,
       }
     })
 

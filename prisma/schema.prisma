@@ -14,6 +14,8 @@ model User {
   password     String
   name         String
   phone        String?
+  address      String?   // ✅ ADD THIS - was missing
+  aadharNumber String?   // ✅ ADD THIS - was missing
   role         Role     @default(MEMBER)
   isVerified   Boolean  @default(false)
   isActive     Boolean  @default(true)
@@ -26,7 +28,7 @@ model User {
   sangha       Sangha?  @relation("SanghaAdmin", fields: [sanghaId], references: [id])
   sanghaId     String?  @unique
   members      Member[] @relation("AdminMembers")
-  sanghaRequests SanghaRequest[]
+  sanghaRequests SanghaRequest[] 
 }
 
 model Sangha {
@@ -90,11 +92,9 @@ model SanghaRequest {
   rejectedReason  String?
   assignedSanghaId String?
   
-  // Relations
   adminId         String
   admin           User     @relation(fields: [adminId], references: [id])
 }
-
 
 enum Role {
   SUPERADMIN

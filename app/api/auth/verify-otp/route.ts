@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
     console.log('📝 Stored Expiry:', user.otpExpiry)
     console.log('📝 isVerified:', user.isVerified)
 
-    // Check if already verified
     if (user.isVerified) {
       console.log('✅ Email already verified')
       return NextResponse.json(
@@ -42,7 +41,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if OTP exists
     if (!user.otp) {
       console.log('❌ No OTP found for user')
       return NextResponse.json(
@@ -51,8 +49,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Compare OTP
-    if (user.otp !== otp) {
+    if (String(user.otp) !== String(otp)) {
       console.log('❌ OTP MISMATCH! Stored:', user.otp, 'Entered:', otp)
       return NextResponse.json(
         { error: 'Invalid OTP' },
@@ -60,11 +57,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if OTP expired
-    if (new Date() > user.otpExpiry!) {
-      console.log('❌ OTP expired')
+    if (user.otpExpiry && new Date() > new Date(user.otpExpiry)) {
+      console.log('❌ OTP expired at:', user.otpExpiry)
       return NextResponse.json(
-        { error: 'OTP expired' },
+        { error: 'OTP expired. Please request a new one.' },
         { status: 400 }
       )
     }
@@ -82,22 +78,26 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ User verified successfully!')
 
-    const token = generateToken(user.id, user.email, user.role)
+    // ✅ ✅ ✅ FIX: Await the token generation
+    const token = await generateToken(user.id, user.email, user.role)
 
-    // Determine redirect URL
     let redirectUrl = '/dashboard'
     
     if (user.role === 'ADMIN') {
-      redirectUrl = '/dashboard/admin'
+      redirectUrl = '/admin/submit-form'
+      console.log('👤 Admin verified - redirecting to submit form')
     } else if (user.role === 'SUPERADMIN') {
       redirectUrl = '/dashboard/superadmin'
+      console.log('👑 SuperAdmin verified - redirecting to dashboard')
     } else {
       redirectUrl = '/dashboard/member'
+      console.log('👤 Member verified - redirecting to dashboard')
     }
 
     console.log('🔄 Redirecting to:', redirectUrl)
 
-    return NextResponse.json({
+    // ✅ Create response
+    const response = NextResponse.json({
       success: true,
       message: 'Email verified successfully',
       token,
@@ -109,6 +109,19 @@ export async function POST(request: NextRequest) {
       },
       redirectUrl,
     })
+
+    // ✅ ✅ ✅ FIX: Set the cookie correctly
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
+
+    console.log('✅ Cookie set with token:', token.substring(0, 20) + '...')
+
+    return response
   } catch (error) {
     console.error('❌ OTP verification error:', error)
     return NextResponse.json(

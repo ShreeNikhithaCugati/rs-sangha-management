@@ -4,12 +4,14 @@ import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value
+    const authHeader = request.headers.get('Authorization')
+    const token = authHeader?.split(' ')[1]
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded || decoded.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -23,7 +25,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([])
     }
 
-    // ✅ Check if Sangha is active
     if (!admin.sangha.isActive) {
       return NextResponse.json(
         { error: 'Sangha is deactivated. Please contact Super Admin.' },
@@ -45,12 +46,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value
+    const authHeader = request.headers.get('Authorization')
+    const token = authHeader?.split(' ')[1]
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded || decoded.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -66,7 +69,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Admin has no Sangha' }, { status: 400 })
     }
 
-    // ✅ Check if Sangha is active
     if (!admin.sangha.isActive) {
       return NextResponse.json(
         { error: 'Cannot add members. Sangha is deactivated.' },
@@ -74,7 +76,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if member already exists
     const existingMember = await prisma.member.findUnique({
       where: { email }
     })
@@ -82,7 +83,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Member already exists' }, { status: 400 })
     }
 
-    // Check member count (max 20 per sangha)
     const memberCount = await prisma.member.count({
       where: { sanghaId: admin.sangha.id }
     })

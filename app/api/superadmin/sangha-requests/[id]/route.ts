@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'  // ✅ Changed from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { sendApprovalEmail, sendRejectionEmail } from '@/lib/email'
 
 export async function GET(
   req: Request,
@@ -25,46 +26,19 @@ export async function GET(
       )
     }
 
-    let request = null
-    try {
-      request = await prisma.sanghaRequest.findUnique({
-        where: { id: params.id },
-        include: {
-          admin: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              username: true
-            }
+    const request = await prisma.sanghaRequest.findUnique({
+      where: { id: params.id },
+      include: {
+        admin: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            username: true
           }
         }
-      })
-    } catch (error) {
-      console.warn('⚠️ SanghaRequest model not found. Returning mock data.')
-      return NextResponse.json({
-        id: params.id,
-        sanghaName: 'Mock Sangha',
-        state: 'Karnataka',
-        country: 'India',
-        city: 'Bangalore',
-        district: 'Bangalore Urban',
-        address: '123 Main Road',
-        adminName: 'Admin User',
-        adminEmail: 'admin@example.com',
-        adminPhone: '9876543210',
-        adminAddress: '456 Admin Street',
-        aadharNumber: '1234-5678-9012',
-        status: 'PENDING',
-        createdAt: new Date().toISOString(),
-        admin: {
-          id: 'admin123',
-          name: 'Admin User',
-          email: 'admin@example.com',
-          username: 'adminuser'
-        }
-      })
-    }
+      }
+    })
 
     if (!request) {
       return NextResponse.json(
@@ -112,15 +86,78 @@ export async function PATCH(
     let updateData: any = {}
 
     if (action === 'approve') {
+      const assignedSanghaId = sanghaId || `RS${Date.now().toString().slice(-6)}`
+      
       updateData = {
         status: 'APPROVED',
-        assignedSanghaId: sanghaId || `RS${Date.now().toString().slice(-6)}`
+        assignedSanghaId: assignedSanghaId
       }
+
+      // ✅ Get the request details
+      const request = await prisma.sanghaRequest.findUnique({
+        where: { id: params.id },
+        include: { admin: true }
+      })
+
+      if (request) {
+        // ✅ Create the sangha
+        const sangha = await prisma.sangha.create({
+          data: {
+            sanghaId: assignedSanghaId,
+            name: request.sanghaName,
+            code: request.sanghaName.substring(0, 3).toUpperCase(),
+            address: request.address || '',
+            isActive: true,
+          }
+        })
+
+        // ✅ Update the admin user with sanghaId
+        await prisma.user.update({
+          where: { id: request.adminId },
+          data: { 
+            sanghaId: sangha.id,
+            isProfileComplete: true
+          }
+        })
+
+        // ✅ Send approval email with Sangha ID
+        try {
+          await sendApprovalEmail(
+            request.adminEmail,
+            request.adminName,
+            assignedSanghaId,
+            request.admin?.username || request.adminEmail.split('@')[0]
+          )
+          console.log('✅ Approval email sent to:', request.adminEmail)
+        } catch (emailError) {
+          console.error('❌ Email sending failed:', emailError)
+        }
+      }
+
     } else if (action === 'reject') {
       updateData = {
         status: 'REJECTED',
         rejectedReason: rejectedReason || 'No reason provided'
       }
+
+      // ✅ Send rejection email
+      const request = await prisma.sanghaRequest.findUnique({
+        where: { id: params.id }
+      })
+
+      if (request) {
+        try {
+          await sendRejectionEmail(
+            request.adminEmail,
+            request.adminName,
+            rejectedReason || 'No reason provided'
+          )
+          console.log('✅ Rejection email sent to:', request.adminEmail)
+        } catch (emailError) {
+          console.error('❌ Email sending failed:', emailError)
+        }
+      }
+
     } else {
       return NextResponse.json(
         { error: 'Invalid action' },
@@ -128,25 +165,15 @@ export async function PATCH(
       )
     }
 
-    let request = null
-    try {
-      request = await prisma.sanghaRequest.update({
-        where: { id: params.id },
-        data: updateData
-      })
-    } catch (error) {
-      console.warn('⚠️ SanghaRequest model not found. Mock update.')
-      return NextResponse.json({
-        success: true,
-        message: `Request ${action}ed successfully (mock)`,
-        request: { id: params.id, ...updateData }
-      })
-    }
+    const updatedRequest = await prisma.sanghaRequest.update({
+      where: { id: params.id },
+      data: updateData
+    })
 
     return NextResponse.json({
       success: true,
       message: `Request ${action}ed successfully`,
-      request
+      request: updatedRequest
     })
   } catch (error) {
     console.error('Error updating request:', error)
