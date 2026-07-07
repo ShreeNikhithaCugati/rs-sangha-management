@@ -14,7 +14,10 @@ export default function SuperAdminSidebar() {
 
   const menuItems = [
     { id: 'dashboard', label: '📊 Dashboard', path: '/dashboard/superadmin' },
-    { id: 'sanghas', label: '🏛️ View Sanghas', path: '/dashboard/superadmin/sanghas' },
+    { id: 'sanghas', label: '🏛️ View All Sanghas', path: '/dashboard/superadmin/sanghas' },
+    { id: 'create-sangha', label: '➕ Create Sangha', path: '/dashboard/superadmin/create-sangha' },
+    { id: 'create-admin', label: '👤 Create Admin', path: '/dashboard/superadmin/create-admin' },
+    { id: 'requests', label: '📋 Sangha Requests', path: '/dashboard/superadmin/requests' },
   ]
 
   const isActive = (path: string) => pathname === path
@@ -71,13 +74,20 @@ export default function SuperAdminSidebar() {
         </button>
       ))}
 
+      {/* Divider */}
+      <div style={{
+        height: '1px',
+        background: 'rgba(255,255,255,0.1)',
+        margin: '16px 0'
+      }} />
+
       <button
         onClick={handleLogout}
         style={{
           display: 'block',
           width: '100%',
           padding: '12px 16px',
-          marginTop: '20px',
+          marginTop: '8px',
           background: 'rgba(239, 68, 68, 0.2)',
           border: 'none',
           borderRadius: '10px',

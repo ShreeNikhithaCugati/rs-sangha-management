@@ -70,9 +70,6 @@ model Member {
 
 model SanghaRequest {
   id              String   @id @default(cuid())
-  adminId         String
-  admin           User     @relation(fields: [adminId], references: [id])
-  
   sanghaName      String
   state           String
   country         String
@@ -81,22 +78,23 @@ model SanghaRequest {
   town            String?
   village         String?
   address         String
-  
   adminName       String
   adminEmail      String
   adminPhone      String
   adminAddress    String
   aadharNumber    String
   photo           String?
-  
   status          RequestStatus @default(PENDING)
-  rejectedReason  String?
-  assignedSanghaId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  reviewedAt      DateTime?
-  reviewedBy      String?
+  rejectedReason  String?
+  assignedSanghaId String?
+  
+  // Relations
+  adminId         String
+  admin           User     @relation(fields: [adminId], references: [id])
 }
+
 
 enum Role {
   SUPERADMIN

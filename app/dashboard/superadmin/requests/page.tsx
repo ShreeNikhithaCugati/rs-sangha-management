@@ -40,16 +40,49 @@ export default function SanghaRequestsPage() {
   }, [])
 
   const fetchRequests = async () => {
-    try {
-      const response = await fetch('/api/superadmin/sangha-requests')
-      const data = await response.json()
-      setRequests(data)
-    } catch (error) {
-      console.error('Error fetching requests:', error)
-    } finally {
-      setLoading(false)
+  try {
+    const token = localStorage.getItem('token')
+    
+    if (!token) {
+      console.log('❌ No token found')
+      router.push('/login')
+      return
     }
+
+    const response = await fetch('/api/superadmin/sangha-requests', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    console.log('📊 Response status:', response.status)
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('❌ API Error:', errorData)
+      
+      // If unauthorized, redirect to login
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        router.push('/login')
+        return
+      }
+      
+      throw new Error(errorData.error || 'Failed to fetch requests')
+    }
+
+    const data = await response.json()
+    console.log('✅ Requests fetched:', data)
+    setRequests(Array.isArray(data) ? data : [])
+  } catch (error) {
+    console.error('❌ Error fetching requests:', error)
+    // Don't redirect, just show empty state
+    setRequests([])
+  } finally {
+    setLoading(false)
   }
+}
 
   if (loading) {
     return (

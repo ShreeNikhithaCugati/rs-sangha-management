@@ -1,7 +1,7 @@
-// app/api/superadmin/sanghas/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma' // ✅ Already using prisma, this is correct!
 import { verifyToken } from '@/lib/auth'
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // ✅ THIS IS WHERE THE CODE GOES - Inside the GET function
     const sanghas = await prisma.sangha.findMany({
       include: {
         admin: {
@@ -27,7 +26,6 @@ export async function GET(request: NextRequest) {
             email: true,
           }
         },
-        // ✅ Add members count
         _count: {
           select: {
             members: true
@@ -37,7 +35,6 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     })
 
-    // ✅ Then transform the data to include membersCount
     const sanghasWithCount = sanghas.map(sangha => ({
       ...sangha,
       membersCount: sangha._count.members
@@ -74,6 +71,7 @@ export async function POST(request: NextRequest) {
 
     const { sanghaId, name, address, date, time } = await request.json()
 
+    // Check if sanghaId already exists
     const existingSanghaId = await prisma.sangha.findUnique({
       where: { sanghaId }
     })
@@ -81,6 +79,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sangha ID already exists' }, { status: 400 })
     }
 
+    // Check if name already exists
     const existingName = await prisma.sangha.findUnique({
       where: { name }
     })
@@ -88,14 +87,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sangha name already exists' }, { status: 400 })
     }
 
-    const dateTime = new Date(`${date}T${time}:00`)
+    const dateTime = date && time ? new Date(`${date}T${time}:00`) : new Date()
 
     const sangha = await prisma.sangha.create({
       data: {
         sanghaId,
         name,
         code: name.substring(0, 3).toUpperCase(),
-        address,
+        address: address || '',
         date: dateTime,
         isActive: true,
       },
