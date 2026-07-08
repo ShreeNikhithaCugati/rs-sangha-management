@@ -1,27 +1,26 @@
-// app/api/auth/check/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get('token')?.value
-  
-  console.log('🔍 Auth Check:')
-  console.log('  Token exists:', !!token)
-  
-  if (!token) {
-    return NextResponse.json({ authenticated: false })
-  }
+  try {
+    const authHeader = request.headers.get('Authorization')
+    const token = authHeader?.split(' ')[1]
 
-  const decoded = verifyToken(token)
-  
-  if (!decoded) {
-    console.log('❌ Invalid token')
-    return NextResponse.json({ authenticated: false })
-  }
+    if (!token) {
+      return NextResponse.json({ error: 'No token' }, { status: 401 })
+    }
 
-  console.log('✅ Token valid for user:', decoded)
-  return NextResponse.json({ 
-    authenticated: true,
-    user: decoded 
-  })
+    const decoded = await verifyToken(token)
+    
+    return NextResponse.json({
+      token: token.substring(0, 30) + '...',
+      decoded: decoded,
+      hasId: !!decoded?.id,
+      hasUserId: !!decoded?.userId,
+      hasEmail: !!decoded?.email,
+      hasRole: !!decoded?.role,
+    })
+  } catch (error) {
+    return NextResponse.json({ error: 'Error' }, { status: 500 })
+  }
 }

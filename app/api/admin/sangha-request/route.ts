@@ -7,46 +7,106 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization')
     const token = authHeader?.split(' ')[1]
 
+    console.log('🔑 ===== START =====')
+    console.log('🔑 Token received:', token ? 'Yes' : 'No')
+
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Unauthorized - No token provided' },
+        { status: 401 }
+      )
     }
 
+    // ⭐ Verify token
     const decoded = await verifyToken(token)
+    console.log('👤 Decoded user:', decoded)
+
     if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      )
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
+    // ⭐⭐ FIX: Try different field names
+    const userId = decoded.id || decoded.userId || decoded.sub
+    
+    console.log('👤 User ID from token:', userId)
+    console.log('👤 User email from token:', decoded.email)
+
+    if (!userId) {
+      console.log('❌ No user ID found in token')
+      return NextResponse.json(
+        { error: 'Invalid token - missing user ID' },
+        { status: 401 }
+      )
+    }
+
+    // ⭐ Find user by ID or email
+    let user = await prisma.user.findUnique({
+      where: { id: userId }
     })
 
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Only Admins can submit this request' }, { status: 403 })
+    // ⭐ If not found by ID, try by email
+    if (!user && decoded.email) {
+      console.log('👤 Trying to find user by email:', decoded.email)
+      user = await prisma.user.findUnique({
+        where: { email: decoded.email }
+      })
     }
+
+    if (!user) {
+      console.log('❌ User not found in database')
+      return NextResponse.json(
+        { error: 'User not found. Please login again.' },
+        { status: 404 }
+      )
+    }
+
+    console.log('👤 User found:', user.id, user.role, user.email)
+
+    // ⭐ Check role
+    const userRole = user.role?.toUpperCase()
+    if (userRole !== 'ADMIN' && userRole !== 'SUPERADMIN') {
+      console.log('❌ User role is not ADMIN or SUPERADMIN:', user.role)
+      return NextResponse.json(
+        { error: 'Forbidden - Only Admins can submit requests' },
+        { status: 403 }
+      )
+    }
+
+    // ⭐ Get request body
+    const body = await request.json()
+    console.log('📝 Request body:', body)
 
     const {
-      sanghaName, state, country, city, district, town, village, address,
-      adminName, adminEmail, adminPhone, adminAddress, aadharNumber, photo
-    } = await request.json()
+      sanghaName,
+      state,
+      country,
+      city,
+      district,
+      town,
+      village,
+      address,
+      adminName,
+      adminEmail,
+      adminPhone,
+      adminAddress,
+      aadharNumber,
+      photo,
+    } = body
 
-    // Check if already has pending request
-    const existingRequest = await prisma.sanghaRequest.findFirst({
-      where: {
-        adminId: decoded.userId,
-        status: 'PENDING'
-      }
-    })
-
-    if (existingRequest) {
+    // ⭐ Validate required fields
+    if (!sanghaName || !state || !country || !city || !district || !address) {
       return NextResponse.json(
-        { error: 'You already have a pending Sangha creation request.' },
+        { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
+    // ⭐ Create SanghaRequest
     const sanghaRequest = await prisma.sanghaRequest.create({
       data: {
-        adminId: decoded.userId,
         sanghaName,
         state,
         country,
@@ -55,24 +115,29 @@ export async function POST(request: NextRequest) {
         town: town || null,
         village: village || null,
         address,
-        adminName,
-        adminEmail,
-        adminPhone,
-        adminAddress,
-        aadharNumber,
+        adminName: adminName || user.name,
+        adminEmail: adminEmail || user.email,
+        adminPhone: adminPhone || user.phone || '',
+        adminAddress: adminAddress || user.address || '',
+        aadharNumber: aadharNumber || user.aadharNumber || '',
         photo: photo || null,
+        adminId: user.id, // ⭐ Use user.id from database
         status: 'PENDING',
       },
     })
 
+    console.log('✅ SanghaRequest created:', sanghaRequest.id)
+
     return NextResponse.json({
-      message: 'Request submitted successfully',
-      requestId: sanghaRequest.id,
+      success: true,
+      message: 'Sangha request submitted successfully',
+      data: sanghaRequest,
     })
+
   } catch (error) {
-    console.error('Error creating sangha request:', error)
+    console.error('❌ Error creating sangha request:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to submit request: ' + (error as Error).message },
       { status: 500 }
     )
   }

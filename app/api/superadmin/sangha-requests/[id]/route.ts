@@ -1,4 +1,3 @@
-//app/api/superadmin/sangha-requests/[id]/route.ts
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
@@ -94,45 +93,69 @@ export async function PATCH(
         assignedSanghaId: assignedSanghaId
       }
 
-      // ✅ Get the request details
+      // Get the request details
       const request = await prisma.sanghaRequest.findUnique({
         where: { id: params.id },
         include: { admin: true }
       })
 
-      if (request) {
-        // ✅ Create the sangha
-        const sangha = await prisma.sangha.create({
-          data: {
-            sanghaId: assignedSanghaId,
-            name: request.sanghaName,
-            code: request.sanghaName.substring(0, 3).toUpperCase(),
-            address: request.address || '',
-            isActive: true,
-          }
-        })
+      if (!request) {
+        return NextResponse.json(
+          { error: 'Request not found' },
+          { status: 404 }
+        )
+      }
 
-        // ✅ Update the admin user with sanghaId
-        await prisma.user.update({
-          where: { id: request.adminId },
-          data: { 
-            sanghaId: sangha.id,
-            isProfileComplete: true
-          }
+      // ⭐ Generate unique code
+      let baseCode = request.sanghaName.substring(0, 3).toUpperCase()
+      let code = baseCode
+      let counter = 1
+      
+      let existingSangha = await prisma.sangha.findUnique({
+        where: { code: code }
+      })
+      
+      while (existingSangha) {
+        code = `${baseCode}${counter}`
+        counter++
+        existingSangha = await prisma.sangha.findUnique({
+          where: { code: code }
         })
+      }
+      
+      console.log(`✅ Generated unique code: ${code}`)
 
-        // ✅ Send approval email with Sangha ID
-        try {
-          await sendApprovalEmail(
-            request.adminEmail,
-            request.adminName,
-            assignedSanghaId,
-            request.admin?.username || request.adminEmail.split('@')[0]
-          )
-          console.log('✅ Approval email sent to:', request.adminEmail)
-        } catch (emailError) {
-          console.error('❌ Email sending failed:', emailError)
+      // Create the sangha
+      const sangha = await prisma.sangha.create({
+        data: {
+          sanghaId: assignedSanghaId,
+          name: request.sanghaName,
+          code: code,
+          address: request.address || '',
+          isActive: true,
         }
+      })
+
+      // Update the admin user
+      await prisma.user.update({
+        where: { id: request.adminId },
+        data: { 
+          sanghaId: sangha.id,
+          isProfileComplete: true
+        }
+      })
+
+      // Send approval email (don't break if fails)
+      try {
+        await sendApprovalEmail(
+          request.adminEmail,
+          request.adminName,
+          assignedSanghaId,
+          request.admin?.username || request.adminEmail.split('@')[0]
+        )
+        console.log('✅ Approval email sent to:', request.adminEmail)
+      } catch (emailError) {
+        console.error('❌ Email sending failed:', emailError)
       }
 
     } else if (action === 'reject') {
@@ -141,7 +164,6 @@ export async function PATCH(
         rejectedReason: rejectedReason || 'No reason provided'
       }
 
-      // ✅ Send rejection email
       const request = await prisma.sanghaRequest.findUnique({
         where: { id: params.id }
       })
@@ -161,7 +183,7 @@ export async function PATCH(
 
     } else {
       return NextResponse.json(
-        { error: 'Invalid action' },
+        { error: 'Invalid action. Use "approve" or "reject"' },
         { status: 400 }
       )
     }
@@ -176,10 +198,11 @@ export async function PATCH(
       message: `Request ${action}ed successfully`,
       request: updatedRequest
     })
+
   } catch (error) {
-    console.error('Error updating request:', error)
+    console.error('❌ Error updating request:', error)
     return NextResponse.json(
-      { error: 'Failed to update request' },
+      { error: 'Failed to update request: ' + (error as Error).message },
       { status: 500 }
     )
   }

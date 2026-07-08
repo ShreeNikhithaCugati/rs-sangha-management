@@ -25,6 +25,7 @@ export default function SubmitFormPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [adminId, setAdminId] = useState('') // ⭐ ADD THIS LINE - was missing!
   const router = useRouter()
 
   useEffect(() => {
@@ -34,11 +35,12 @@ export default function SubmitFormPage() {
       return
     }
 
-    // Pre-fill admin details from user
     const userStr = localStorage.getItem('user')
     if (userStr) {
       try {
         const user = JSON.parse(userStr)
+        setAdminId(user.id) // ⭐ Now this works!
+        
         setFormData(prev => ({
           ...prev,
           adminName: user.name || '',
@@ -48,7 +50,7 @@ export default function SubmitFormPage() {
         console.error('Error parsing user:', e)
       }
     }
-  }, [])
+  }, [router])
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -63,61 +65,76 @@ export default function SubmitFormPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
-    setError('')
+  e.preventDefault()
+  setLoading(true)
+  setMessage('')
+  setError('')
 
-    try {
-      const token = localStorage.getItem('token')
-      
-      if (!token) {
-        router.push('/login')
-        return
-      }
-
-      let photoUrl = ''
-      if (photoFile) {
-        const photoFormData = new FormData()
-        photoFormData.append('photo', photoFile)
-        
-        const photoResponse = await fetch('/api/upload', {
-          method: 'POST',
-          body: photoFormData,
-        })
-        const photoData = await photoResponse.json()
-        if (photoResponse.ok) {
-          photoUrl = photoData.url
-        }
-      }
-
-      const response = await fetch('/api/admin/sangha-request', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // ✅ Add token
-        },
-        body: JSON.stringify({
-          ...formData,
-          photo: photoUrl,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit request')
-      }
-
-      setIsSubmitted(true)
-      setMessage('✅ Your Sangha creation request has been sent to Super Admin successfully!')
-      
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setLoading(false)
+  try {
+    const token = localStorage.getItem('token')
+    
+    if (!token) {
+      router.push('/login')
+      return
     }
+
+    // ⭐ Check if user data exists
+    const userStr = localStorage.getItem('user')
+    if (!userStr) {
+      setError('User data not found. Please login again.')
+      setLoading(false)
+      return
+    }
+
+    let photoUrl = ''
+    if (photoFile) {
+      const photoFormData = new FormData()
+      photoFormData.append('photo', photoFile)
+      
+      const photoResponse = await fetch('/api/upload', {
+        method: 'POST',
+        body: photoFormData,
+      })
+      
+      if (!photoResponse.ok) {
+        const errorData = await photoResponse.json()
+        throw new Error(errorData.error || 'Failed to upload photo')
+      }
+      
+      const photoData = await photoResponse.json()
+      photoUrl = photoData.url
+    }
+
+    // ⭐⭐ REMOVED adminId from here - API will get it from token
+    const response = await fetch('/api/admin/sangha-request', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        ...formData,
+        photo: photoUrl,
+        // ⭐ NO adminId here - API will use token
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to submit request')
+    }
+
+    setIsSubmitted(true)
+    setMessage('✅ Your Sangha creation request has been sent to Super Admin successfully!')
+    
+  } catch (err) {
+    setError((err as Error).message)
+    console.error('❌ Error:', err)
+  } finally {
+    setLoading(false)
   }
+}
 
   // ✅ SHOW SUBMITTED STATUS
   if (isSubmitted) {
@@ -227,12 +244,16 @@ export default function SubmitFormPage() {
 
         {error && (
           <div style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
             color: '#f87171',
+            padding: '16px',
+            borderRadius: '10px',
             fontSize: '14px',
+            marginBottom: '20px',
             textAlign: 'center',
-            marginBottom: '16px',
           }}>
-            {error}
+            ❌ {error}
           </div>
         )}
 
@@ -452,14 +473,7 @@ export default function SubmitFormPage() {
               cursor: 'pointer',
               transition: 'all 0.3s ease',
               boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#4f46e5'
-              e.currentTarget.style.transform = 'translateY(-2px)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#6366f1'
-              e.currentTarget.style.transform = 'translateY(0)'
+              opacity: loading ? 0.7 : 1,
             }}
           >
             {loading ? 'Submitting...' : 'Submit Request to Super Admin'}
