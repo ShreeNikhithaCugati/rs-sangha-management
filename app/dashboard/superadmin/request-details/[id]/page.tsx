@@ -35,102 +35,143 @@ interface RequestDetails {
 export default function RequestDetailsPage() {
   const [request, setRequest] = useState<RequestDetails | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const router = useRouter()
   const params = useParams()
   const id = params.id
 
   useEffect(() => {
-    const token = document.cookie.split('; ').find(row => row.startsWith('token='))
+    // ✅ Check localStorage for token
+    const token = localStorage.getItem('token')
+    console.log('🔍 Token from localStorage:', token ? 'Yes' : 'No')
+    
     if (!token) {
+      console.log('❌ No token found, redirecting to login')
       router.push('/login')
       return
     }
+    
     fetchRequestDetails()
   }, [])
 
   const fetchRequestDetails = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    
-    if (!token) {
-      router.push('/login')
-      return
-    }
-
-    const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    try {
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        console.log('❌ No token found')
+        router.push('/login')
+        return
       }
-    })
-    
-    const data = await response.json()
-    setRequest(data)
-  } catch (error) {
-    console.error('Error fetching request details:', error)
-  } finally {
-    setLoading(false)
-  }
-}
 
-const handleApprove = async () => {
-  const sanghaId = prompt('Enter Sangha ID for this admin (or leave blank for auto-generate):')
-  if (sanghaId === null) return
-  
-  try {
-    const token = localStorage.getItem('token')
-    
-    const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ action: 'approve', sanghaId: sanghaId || undefined }),
-    })
+      console.log('🔑 Fetching request details with token:', token.substring(0, 20) + '...')
+      console.log('📝 Request ID:', id)
 
-    const data = await response.json()
+      const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
 
-    if (response.ok) {
-      alert(`✅ ${data.message}`)
-      router.push('/dashboard/superadmin/requests')
-    } else {
-      alert('❌ ' + data.error)
+      console.log('📊 Response status:', response.status)
+
+      if (response.status === 401 || response.status === 403) {
+        console.log('❌ Unauthorized, redirecting to login')
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        router.push('/login')
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ API Error:', errorData)
+        setError(errorData.error || 'Failed to fetch request details')
+        return
+      }
+
+      const data = await response.json()
+      console.log('✅ Request details fetched:', data)
+      setRequest(data)
+    } catch (error) {
+      console.error('❌ Error fetching request details:', error)
+      setError('Error fetching request details')
+    } finally {
+      setLoading(false)
     }
-  } catch (error) {
-    console.error('Error approving request:', error)
-    alert('❌ Error approving request')
   }
-}
 
-const handleReject = async () => {
-  const reason = prompt('Enter reason for rejection:')
-  if (!reason) return
-
-  try {
-    const token = localStorage.getItem('token')
+  const handleApprove = async () => {
+    const sanghaId = prompt('Enter Sangha ID for this admin (or leave blank for auto-generate):')
+    if (sanghaId === null) return
     
-    const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ action: 'reject', rejectedReason: reason }),
-    })
+    try {
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        router.push('/login')
+        return
+      }
 
-    const data = await response.json()
+      const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ action: 'approve', sanghaId: sanghaId || undefined }),
+      })
 
-    if (response.ok) {
-      alert(`✅ ${data.message}`)
-      router.push('/dashboard/superadmin/requests')
-    } else {
-      alert('❌ ' + data.error)
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(`✅ ${data.message}`)
+        router.push('/dashboard/superadmin/requests')
+      } else {
+        alert('❌ ' + data.error)
+      }
+    } catch (error) {
+      console.error('Error approving request:', error)
+      alert('❌ Error approving request')
     }
-  } catch (error) {
-    console.error('Error rejecting request:', error)
-    alert('❌ Error rejecting request')
   }
-}
+
+  const handleReject = async () => {
+    const reason = prompt('Enter reason for rejection:')
+    if (!reason) return
+
+    try {
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        router.push('/login')
+        return
+      }
+
+      const response = await fetch(`/api/superadmin/sangha-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ action: 'reject', rejectedReason: reason }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(`✅ ${data.message}`)
+        router.push('/dashboard/superadmin/requests')
+      } else {
+        alert('❌ ' + data.error)
+      }
+    } catch (error) {
+      console.error('Error rejecting request:', error)
+      alert('❌ Error rejecting request')
+    }
+  }
+
   if (loading) {
     return (
       <div style={{
@@ -142,6 +183,46 @@ const handleReject = async () => {
         fontFamily: 'Arial, sans-serif'
       }}>
         <div style={{ color: 'white', fontSize: '20px' }}>Loading...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1e1b4b, #4c1d95, #9d174d)',
+        display: 'flex',
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <SuperAdminSidebar />
+        <div style={{ flex: 1, padding: '32px 24px' }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(12px)',
+            borderRadius: '16px',
+            padding: '40px',
+            border: '1px solid rgba(255,255,255,0.15)',
+            textAlign: 'center'
+          }}>
+            <h2 style={{ color: '#f87171' }}>Error</h2>
+            <p style={{ color: '#a5b4fc' }}>{error}</p>
+            <button
+              onClick={() => router.push('/dashboard/superadmin/requests')}
+              style={{
+                marginTop: '16px',
+                padding: '10px 24px',
+                background: 'rgba(255,255,255,0.1)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              Back to Requests
+            </button>
+          </div>
+        </div>
       </div>
     )
   }

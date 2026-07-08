@@ -1,4 +1,3 @@
-// app/api/auth/verify-otp/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateToken } from '@/lib/auth'
@@ -7,9 +6,9 @@ export async function POST(request: NextRequest) {
   try {
     const { email, otp } = await request.json()
 
-    console.log('🔍 ===== VERIFY OTP START =====')
+    console.log('🔍 ===== VERIFY OTP =====')
     console.log('🔍 Email:', email)
-    console.log('🔍 Entered OTP:', otp)
+    console.log('🔍 OTP:', otp)
 
     if (!email || !otp) {
       return NextResponse.json(
@@ -18,31 +17,43 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await prisma.user.findUnique({ 
+      where: { email }
+    })
     
     if (!user) {
-      console.log('❌ User not found:', email)
+      console.log('❌ User not found')
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       )
     }
 
-    console.log('👤 User found:', { id: user.id, email: user.email, role: user.role })
-    console.log('📝 Stored OTP:', user.otp)
-    console.log('📝 Stored Expiry:', user.otpExpiry)
-    console.log('📝 isVerified:', user.isVerified)
+    console.log('👤 User found with role:', user.role)
 
+    // Check if already verified
     if (user.isVerified) {
-      console.log('✅ Email already verified')
-      return NextResponse.json(
-        { error: 'Email already verified' },
-        { status: 400 }
-      )
+      console.log('✅ User already verified')
+      const redirectUrl = user.role.toUpperCase() === 'ADMIN' 
+        ? '/admin/submit-form' 
+        : '/dashboard'
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Already verified',
+        redirectUrl: redirectUrl,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        }
+      })
     }
 
+    // Check OTP
     if (!user.otp) {
-      console.log('❌ No OTP found for user')
+      console.log('❌ No OTP found')
       return NextResponse.json(
         { error: 'No OTP found. Please request a new OTP.' },
         { status: 400 }
@@ -50,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (String(user.otp) !== String(otp)) {
-      console.log('❌ OTP MISMATCH! Stored:', user.otp, 'Entered:', otp)
+      console.log('❌ OTP mismatch - Stored:', user.otp, 'Entered:', otp)
       return NextResponse.json(
         { error: 'Invalid OTP' },
         { status: 400 }
@@ -58,15 +69,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (user.otpExpiry && new Date() > new Date(user.otpExpiry)) {
-      console.log('❌ OTP expired at:', user.otpExpiry)
+      console.log('❌ OTP expired')
       return NextResponse.json(
         { error: 'OTP expired. Please request a new one.' },
         { status: 400 }
       )
     }
 
-    // Mark user as verified
-    await prisma.user.update({
+    // Mark as verified
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         isVerified: true,
@@ -77,40 +88,44 @@ export async function POST(request: NextRequest) {
     })
 
     console.log('✅ User verified successfully!')
+    console.log('✅ User role after update:', updatedUser.role)
 
-    // ✅ ✅ ✅ FIX: Await the token generation
-    const token = await generateToken(user.id, user.email, user.role)
+    // Generate token
+    const token = await generateToken(updatedUser.id, updatedUser.email, updatedUser.role)
 
-    let redirectUrl = '/dashboard'
+    // ⭐⭐⭐ FIX: Convert role to uppercase for comparison
+    const userRole = updatedUser.role.toUpperCase()
     
-    if (user.role === 'ADMIN') {
+    let redirectUrl = '/login' // Default fallback
+    
+    if (userRole === 'ADMIN') {
       redirectUrl = '/admin/submit-form'
-      console.log('👤 Admin verified - redirecting to submit form')
-    } else if (user.role === 'SUPERADMIN') {
+      console.log('✅ ADMIN -> Redirecting to:', redirectUrl)
+    } else if (userRole === 'SUPERADMIN') {
       redirectUrl = '/dashboard/superadmin'
-      console.log('👑 SuperAdmin verified - redirecting to dashboard')
+      console.log('✅ SUPERADMIN -> Redirecting to:', redirectUrl)
     } else {
       redirectUrl = '/dashboard/member'
-      console.log('👤 Member verified - redirecting to dashboard')
+      console.log('✅ MEMBER -> Redirecting to:', redirectUrl)
     }
 
-    console.log('🔄 Redirecting to:', redirectUrl)
+    const userData = {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      role: updatedUser.role,
+    }
 
-    // ✅ Create response
+    // ⭐⭐⭐ Create response with all data
     const response = NextResponse.json({
       success: true,
       message: 'Email verified successfully',
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-      redirectUrl,
+      token: token,
+      user: userData,
+      redirectUrl: redirectUrl,
     })
 
-    // ✅ ✅ ✅ FIX: Set the cookie correctly
+    // Set HTTP-only cookie
     response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -119,11 +134,13 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
     })
 
-    console.log('✅ Cookie set with token:', token.substring(0, 20) + '...')
+    console.log('✅ Response sent with redirectUrl:', redirectUrl)
+    console.log('✅ User data sent:', userData)
 
     return response
+
   } catch (error) {
-    console.error('❌ OTP verification error:', error)
+    console.error('❌ Error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

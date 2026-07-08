@@ -1,4 +1,3 @@
-// app/verify-otp/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -13,7 +12,6 @@ export default function VerifyOTPPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [debug, setDebug] = useState<any>(null)
   const [resendTimer, setResendTimer] = useState(60)
   const [canResend, setCanResend] = useState(false)
 
@@ -53,35 +51,33 @@ export default function VerifyOTPPage() {
 
       const data = await response.json()
       console.log('📥 Response:', data)
-      console.log('📥 Redirect URL from API:', data.redirectUrl)
 
       if (!response.ok) {
         throw new Error(data.error || 'Invalid OTP')
       }
 
       setSuccess('✅ Email verified successfully!')
-      setDebug(data)
       
-      // ✅ Store token in localStorage
+      // Store data
       if (data.token) {
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
-        console.log('✅ Token stored in localStorage')
+        console.log('✅ Token stored')
+        console.log('✅ User stored:', data.user)
       }
       
-      // ✅ ✅ ✅ Use window.location.href for full page reload
+      // Redirect based on role
+      let redirectTo = data.redirectUrl || '/login'
+      
+      console.log('🚀 Redirecting to:', redirectTo)
+      
       setTimeout(() => {
-        if (data.redirectUrl) {
-          console.log('🔄 Redirecting to:', data.redirectUrl)
-          window.location.href = data.redirectUrl
-        } else {
-          console.log('🔄 No redirectUrl, going to login')
-          window.location.href = '/login'
-        }
+        window.location.href = redirectTo
       }, 1500)
 
     } catch (err) {
       setError((err as Error).message)
+      console.error('❌ Error:', err)
     } finally {
       setLoading(false)
     }
@@ -121,23 +117,6 @@ export default function VerifyOTPPage() {
       setError((err as Error).message)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const checkStoredOTP = async () => {
-    try {
-      const response = await fetch(`/api/auth/check-otp?email=${email}`)
-      const data = await response.json()
-      console.log('🔍 Stored OTP:', data)
-      setDebug(data)
-      if (data.otp) {
-        alert(`✅ Stored OTP in database: ${data.otp}\nExpires: ${new Date(data.otpExpiry).toLocaleString()}`)
-      } else {
-        alert('❌ No OTP found in database for this email')
-      }
-    } catch (err) {
-      console.error('Error checking OTP:', err)
-      alert('❌ Error checking OTP')
     }
   }
 
@@ -264,22 +243,12 @@ export default function VerifyOTPPage() {
               ❌ {error}
               {error === 'Invalid OTP' && (
                 <div style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af' }}>
-                  💡 Tip: Make sure you're entering the 6-digit code exactly as shown in your email.
-                  {process.env.NODE_ENV === 'development' && (
-                    <div style={{ marginTop: '4px', color: '#fbbf24' }}>
-                      🔧 Dev: Click "🔍 Debug: Check Stored OTP" below to see the correct OTP
-                    </div>
-                  )}
+                  💡 Make sure you're entering the 6-digit code correctly.
                 </div>
               )}
               {error === 'OTP expired' && (
                 <div style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af' }}>
-                  💡 Your OTP has expired. Click "Resend OTP" below to get a new one.
-                </div>
-              )}
-              {error === 'No OTP found. Please request a new OTP.' && (
-                <div style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af' }}>
-                  💡 No OTP found. Click "Resend OTP" below to get a new one.
+                  💡 Your OTP has expired. Click "Resend OTP" below.
                 </div>
               )}
             </div>
@@ -339,55 +308,6 @@ export default function VerifyOTPPage() {
             ← Back to signup
           </button>
         </div>
-
-        {process.env.NODE_ENV === 'development' && (
-          <div style={{ 
-            marginTop: '20px', 
-            padding: '12px', 
-            background: 'rgba(255,255,255,0.05)', 
-            borderRadius: '8px',
-            border: '1px solid rgba(255,255,255,0.1)'
-          }}>
-            <button
-              onClick={checkStoredOTP}
-              style={{
-                background: 'none',
-                border: '1px solid #4b5563',
-                color: '#9ca3af',
-                padding: '5px 10px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#818cf8'
-                e.currentTarget.style.color = 'white'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#4b5563'
-                e.currentTarget.style.color = '#9ca3af'
-              }}
-            >
-              🔍 Debug: Check Stored OTP
-            </button>
-            {debug && (
-              <pre style={{ 
-                color: '#9ca3af', 
-                fontSize: '11px', 
-                marginTop: '10px', 
-                textAlign: 'left',
-                padding: '8px',
-                background: 'rgba(0,0,0,0.3)',
-                borderRadius: '4px',
-                overflow: 'auto',
-                maxHeight: '150px'
-              }}>
-                {JSON.stringify(debug, null, 2)}
-              </pre>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )
