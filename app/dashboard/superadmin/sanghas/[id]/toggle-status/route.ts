@@ -1,3 +1,4 @@
+//app/dashboard/superadmin/sanghas/[id]/toggle-status/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
