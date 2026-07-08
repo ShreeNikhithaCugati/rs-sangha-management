@@ -34,7 +34,11 @@ export async function POST(req: Request) {
     const otp = generateOTP()
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
-    // ✅ Create user with correct field name: otpExpiry (not otpExpiresAt)
+    // ✅ Convert role to uppercase
+    const normalizedRole = (role || 'MEMBER').toUpperCase()
+    console.log('📝 Saving role as:', normalizedRole)
+
+    // ✅ Create user
     const user = await prisma.user.create({
       data: {
         name,
@@ -44,15 +48,16 @@ export async function POST(req: Request) {
         phone: phone || '',
         address: address || '',
         aadharNumber: aadharNumber || '',
-        role: role || 'MEMBER',
+        role: normalizedRole, // ✅ Save as uppercase
         isVerified: false,
         isProfileComplete: false,
         otp: otp,
-        otpExpiry: otpExpiry,  // ✅ Changed from otpExpiresAt to otpExpiry
+        otpExpiry: otpExpiry,
         sanghaId: null
       }
     })
 
+    console.log('✅ User created with role:', user.role)
     console.log('✅ User created with OTP:', otp)
     console.log('⏰ OTP Expiry:', otpExpiry)
 
@@ -64,28 +69,15 @@ export async function POST(req: Request) {
       console.error('OTP email failed:', emailError)
     }
 
-    // Generate token
-    const token = await generateToken(user.id, user.email, user.role)
-
-    // ✅ If user is ADMIN, they need to submit form
-    const redirectTo = user.role === 'ADMIN' ? '/admin/submit-form' : '/verify-otp'
-
+    // ⭐⭐⭐ RETURN EMAIL FOR REDIRECT
     return NextResponse.json({
       success: true,
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        isProfileComplete: false
-      },
-      redirectTo: redirectTo,
-      message: user.role === 'ADMIN' 
-        ? 'Please complete your Sangha registration form.'
-        : 'Please verify your email with OTP.'
+      message: 'User created successfully',
+      email: user.email, // ⭐ This is used for redirect
+      role: user.role,
+      debug: process.env.NODE_ENV === 'development' ? { otp } : undefined,
     })
+
   } catch (error) {
     console.error('Signup error:', error)
     return NextResponse.json(

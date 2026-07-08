@@ -13,8 +13,6 @@ export default function SignupPage() {
     phone: '',
     role: 'MEMBER'
   })
-  const [otp, setOtp] = useState('')
-  const [step, setStep] = useState(1)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -84,42 +82,13 @@ export default function SignupPage() {
       }
 
       setSuccessMessage(`✅ Account created successfully! Please check your email for OTP verification.`)
-      setStep(2)
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    setSuccessMessage('')
-
-    try {
-      const response = await fetch('/api/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email, otp }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'OTP verification failed')
-      }
-
-      setSuccessMessage(`✅ Email verified successfully! Redirecting...`)
-
-      document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`
-      
-      // ✅ FIX: Use redirectUrl from API
+      // ⭐⭐⭐ FIX: Redirect to verify-otp page with email
       setTimeout(() => {
-        const redirectUrl = data.redirectUrl || '/dashboard'
-        router.push(redirectUrl)
+        console.log('🔄 Redirecting to verify-otp with email:', formData.email)
+        window.location.href = `/verify-otp?email=${formData.email}`
       }, 1500)
+
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -127,147 +96,7 @@ export default function SignupPage() {
     }
   }
 
-  // OTP Verification Step
-  if (step === 2) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #1e1b4b, #4c1d95, #9d174d)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        fontFamily: 'Arial, sans-serif',
-      }}>
-        <div style={{
-          maxWidth: '420px',
-          width: '100%',
-          padding: '40px 36px',
-          background: 'rgba(255,255,255,0.08)',
-          backdropFilter: 'blur(12px)',
-          borderRadius: '16px',
-          border: '1px solid rgba(255,255,255,0.15)',
-          boxShadow: '0 30px 60px -20px rgba(0,0,0,0.6)',
-        }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '28px', fontWeight: '700', color: 'white', marginBottom: '6px' }}>
-              Verify Your Email
-            </h2>
-            <p style={{ fontSize: '14px', color: '#a5b4fc' }}>
-              We sent a verification code to<br />
-              <span style={{ fontWeight: '600', color: 'white' }}>{formData.email}</span>
-            </p>
-          </div>
-
-          {successMessage && (
-            <div style={{
-              backgroundColor: 'rgba(34, 197, 94, 0.15)',
-              border: '1px solid rgba(74, 222, 128, 0.3)',
-              color: '#86efac',
-              padding: '12px 16px',
-              borderRadius: '10px',
-              fontSize: '14px',
-              marginBottom: '20px',
-              textAlign: 'center',
-            }}>
-              {successMessage}
-            </div>
-          )}
-
-          <form onSubmit={handleVerifyOTP}>
-            <div>
-              <input
-                type="text"
-                required
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  background: 'rgba(255,255,255,0.06)',
-                  color: 'white',
-                  borderRadius: '10px',
-                  fontSize: '24px',
-                  textAlign: 'center',
-                  letterSpacing: '10px',
-                  outline: 'none',
-                  transition: 'all 0.3s ease',
-                  boxSizing: 'border-box',
-                }}
-                placeholder="Enter 6-digit OTP"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                maxLength={6}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#818cf8'
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
-                }}
-              />
-            </div>
-
-            {error && (
-              <div style={{ color: '#f87171', fontSize: '14px', textAlign: 'center', marginTop: '16px' }}>
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '14px',
-                backgroundColor: 'white',
-                color: '#1e1b4b',
-                border: 'none',
-                borderRadius: '10px',
-                fontWeight: '600',
-                fontSize: '16px',
-                cursor: 'pointer',
-                marginTop: '24px',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#e0e7ff'
-                e.currentTarget.style.transform = 'translateY(-2px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              {loading ? 'Verifying...' : 'Verify OTP'}
-            </button>
-
-            <div style={{ textAlign: 'center', marginTop: '16px' }}>
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#a5b4fc',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  transition: 'color 0.3s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#a5b4fc'}
-              >
-                ← Back to signup
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
-  // Signup Form
+  // Signup Form (REMOVED Step 2 - OTP is now on separate page)
   return (
     <div style={{
       minHeight: '100vh',
@@ -321,6 +150,21 @@ export default function SignupPage() {
             textAlign: 'center',
           }}>
             {successMessage}
+          </div>
+        )}
+
+        {error && (
+          <div style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            color: '#f87171',
+            padding: '12px 16px',
+            borderRadius: '10px',
+            fontSize: '14px',
+            marginBottom: '20px',
+            textAlign: 'center',
+          }}>
+            ❌ {error}
           </div>
         )}
 
@@ -640,17 +484,6 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {error && (
-            <div style={{
-              color: '#f87171',
-              fontSize: '14px',
-              textAlign: 'center',
-              marginTop: '18px',
-            }}>
-              {error}
-            </div>
-          )}
-
           <button
             type="submit"
             disabled={loading}
@@ -667,16 +500,21 @@ export default function SignupPage() {
               marginTop: '24px',
               transition: 'all 0.3s ease',
               boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+              opacity: loading ? 0.6 : 1,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e0e7ff'
-              e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.3)'
+              if (!loading) {
+                e.currentTarget.style.backgroundColor = '#e0e7ff'
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.3)'
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white'
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)'
+              if (!loading) {
+                e.currentTarget.style.backgroundColor = 'white'
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)'
+              }
             }}
           >
             {loading ? 'Creating account...' : 'Create Account'}
