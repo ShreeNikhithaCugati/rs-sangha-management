@@ -6,37 +6,52 @@ import { verifyToken } from './lib/auth'
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
   
-  // ✅ Skip API routes
+  // Skip API routes
   if (path.startsWith('/api/')) {
     return NextResponse.next()
   }
   
-  // ✅ Public paths (no auth needed)
+  // Public paths
   const publicPaths = ['/login', '/signup', '/verify-otp', '/']
   if (publicPaths.includes(path)) {
     return NextResponse.next()
   }
 
-  console.log('🔐 Checking auth for:', path)
+  console.log('🔐 Middleware - Checking auth for:', path)
 
-  // ✅ Get token from cookie
-  const token = request.cookies.get('token')?.value || null
-
-  console.log('🔑 Token from cookie:', token ? 'Yes (' + token.substring(0, 20) + '...)' : 'No')
-
-  // ✅ If no token, redirect to login
+  // ✅ Check BOTH: Authorization header AND cookie
+  let token = null
+  
+  // 1. Check Authorization header
+  const authHeader = request.headers.get('Authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.substring(7)
+    console.log('🔑 Token found in Authorization header')
+  }
+  
+  // 2. If no header, check cookie
   if (!token) {
-    console.log('❌ No token found, redirecting to login')
+    token = request.cookies.get('token')?.value || null
+    if (token) {
+      console.log('🔑 Token found in cookie')
+    }
+  }
+
+  console.log('🔑 Token found:', token ? 'Yes' : 'No')
+
+  // If no token, redirect to login
+  if (!token) {
+    console.log('❌ Middleware - No token found, redirecting to login')
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  console.log('🔑 Token found, verifying...')
+  console.log('🔑 Middleware - Token found, verifying...')
 
   // Verify token
   const decoded = await verifyToken(token)
   
   if (!decoded) {
-    console.log('❌ Invalid token, redirecting to login')
+    console.log('❌ Middleware - Invalid token, redirecting to login')
     const response = NextResponse.redirect(new URL('/login', request.url))
     response.cookies.delete('token')
     return response
@@ -45,36 +60,36 @@ export async function middleware(request: NextRequest) {
   const userRole = decoded.role?.toUpperCase() || ''
   const pathLower = path.toLowerCase()
 
-  console.log(`✅ User role: ${userRole}, accessing: ${path}`)
+  console.log(`✅ Middleware - User role: ${userRole}, accessing: ${path}`)
 
-  // ✅ Allow admin to access submit form
+  // Allow admin to access submit form
   if (pathLower === '/admin/submit-form') {
     if (userRole === 'ADMIN' || userRole === 'SUPERADMIN') {
-      console.log('✅ Admin accessing submit form - allowed')
+      console.log('✅ Middleware - Admin accessing submit form - allowed')
       return NextResponse.next()
     } else {
-      console.log('❌ Access denied: Not ADMIN or SUPERADMIN')
+      console.log('❌ Middleware - Access denied: Not ADMIN or SUPERADMIN')
       return NextResponse.redirect(new URL('/login', request.url))
     }
   }
 
   // Role-based access control for dashboard
   if (pathLower.startsWith('/dashboard/superadmin') && userRole !== 'SUPERADMIN') {
-    console.log('❌ Access denied: Not SUPERADMIN')
+    console.log('❌ Middleware - Access denied: Not SUPERADMIN')
     return NextResponse.redirect(new URL('/login', request.url))
   }
   
   if (pathLower.startsWith('/dashboard/admin') && userRole !== 'ADMIN') {
-    console.log('❌ Access denied: Not ADMIN')
+    console.log('❌ Middleware - Access denied: Not ADMIN')
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
   if (pathLower.startsWith('/dashboard/member') && userRole !== 'MEMBER') {
-    console.log('❌ Access denied: Not MEMBER')
+    console.log('❌ Middleware - Access denied: Not MEMBER')
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  console.log('✅ Access granted for:', path)
+  console.log('✅ Middleware - Access granted for:', path)
   return NextResponse.next()
 }
 

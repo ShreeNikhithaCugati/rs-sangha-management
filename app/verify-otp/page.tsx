@@ -36,6 +36,7 @@ export default function VerifyOTPPage() {
   }, [resendTimer, canResend])
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
+    alert('4')
     e.preventDefault()
     setLoading(true)
     setError('')
@@ -52,8 +53,18 @@ export default function VerifyOTPPage() {
       })
 
       const data = await response.json()
-      console.log('📥 Response:', data)
-      console.log('📥 Redirect URL from API:', data.redirectUrl)
+      console.log('📥 Full Response:', data)
+      
+      // ✅ Check if token exists
+      if (!data.token) {
+        console.error('❌ NO TOKEN in response!')
+        console.error('❌ Response keys:', Object.keys(data))
+        setError('No token received. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      console.log('✅ TOKEN FOUND! Length:', data.token.length)
 
       if (!response.ok) {
         throw new Error(data.error || 'Invalid OTP')
@@ -62,27 +73,44 @@ export default function VerifyOTPPage() {
       setSuccess('✅ Email verified successfully!')
       setDebug(data)
       
-      // ✅ Store token in localStorage
-      if (data.token) {
+      // ✅ ✅ ✅ Store token in localStorage
+      try {
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
-        console.log('✅ Token stored in localStorage')
+        
+        // ✅ Verify it was saved
+        const savedToken = localStorage.getItem('token')
+        console.log('✅ Token saved to localStorage:', savedToken ? 'Yes' : 'No')
+        if (savedToken) {
+          console.log('✅ Saved token length:', savedToken.length)
+        }
+        
+        // Also set cookie
+        document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
+        console.log('✅ Cookie set via document.cookie')
+        
+      } catch (storageError) {
+        console.error('❌ Error saving to localStorage:', storageError)
+        setError('Failed to save token. Please try again.')
+        setLoading(false)
+        return
       }
       
-      // ✅ ✅ ✅ Use window.location.href for full page reload
+      // ✅ Double-check before redirect
+      const finalCheck = localStorage.getItem('token')
+      console.log('🔍 Before redirect - Token in localStorage:', finalCheck ? 'Yes' : 'No')
+      
+      // ✅ Redirect after saving
+      const redirectUrl = data.redirectUrl || '/login'
+      console.log('🔄 Redirecting to:', redirectUrl)
+      
       setTimeout(() => {
-        if (data.redirectUrl) {
-          console.log('🔄 Redirecting to:', data.redirectUrl)
-          window.location.href = data.redirectUrl
-        } else {
-          console.log('🔄 No redirectUrl, going to login')
-          window.location.href = '/login'
-        }
+        window.location.href = redirectUrl
       }, 1500)
 
     } catch (err) {
+      console.error('❌ Error:', err)
       setError((err as Error).message)
-    } finally {
       setLoading(false)
     }
   }
@@ -262,32 +290,13 @@ export default function VerifyOTPPage() {
               border: '1px solid rgba(239, 68, 68, 0.2)',
             }}>
               ❌ {error}
-              {error === 'Invalid OTP' && (
-                <div style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af' }}>
-                  💡 Tip: Make sure you're entering the 6-digit code exactly as shown in your email.
-                  {process.env.NODE_ENV === 'development' && (
-                    <div style={{ marginTop: '4px', color: '#fbbf24' }}>
-                      🔧 Dev: Click "🔍 Debug: Check Stored OTP" below to see the correct OTP
-                    </div>
-                  )}
-                </div>
-              )}
-              {error === 'OTP expired' && (
-                <div style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af' }}>
-                  💡 Your OTP has expired. Click "Resend OTP" below to get a new one.
-                </div>
-              )}
-              {error === 'No OTP found. Please request a new OTP.' && (
-                <div style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af' }}>
-                  💡 No OTP found. Click "Resend OTP" below to get a new one.
-                </div>
-              )}
             </div>
           )}
 
           <button
-            type="submit"
+            type="button"
             disabled={loading || otp.length !== 6}
+            onClick={()=> alert('verify OTP')}
             style={{
               width: '100%',
               padding: '14px',
@@ -309,7 +318,7 @@ export default function VerifyOTPPage() {
 
         <div style={{ marginTop: '20px' }}>
           <button
-            onClick={handleResendOTP}
+            onClick={() => {alert('1');handleResendOTP}}
             disabled={!canResend || loading}
             style={{
               background: 'none',
@@ -326,7 +335,7 @@ export default function VerifyOTPPage() {
 
         <div style={{ marginTop: '16px' }}>
           <button
-            onClick={() => router.push('/signup')}
+            onClick={() => {alert('2'); router.push('/signup')}}
             style={{
               background: 'none',
               border: 'none',
@@ -349,7 +358,7 @@ export default function VerifyOTPPage() {
             border: '1px solid rgba(255,255,255,0.1)'
           }}>
             <button
-              onClick={checkStoredOTP}
+              onClick={() => {alert('3'); checkStoredOTP()}}
               style={{
                 background: 'none',
                 border: '1px solid #4b5563',
@@ -359,14 +368,6 @@ export default function VerifyOTPPage() {
                 cursor: 'pointer',
                 fontSize: '12px',
                 transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#818cf8'
-                e.currentTarget.style.color = 'white'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#4b5563'
-                e.currentTarget.style.color = '#9ca3af'
               }}
             >
               🔍 Debug: Check Stored OTP

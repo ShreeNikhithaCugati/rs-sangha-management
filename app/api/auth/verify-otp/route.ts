@@ -29,9 +29,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('👤 User found:', { id: user.id, email: user.email, role: user.role })
-    console.log('📝 Stored OTP:', user.otp)
-    console.log('📝 Stored Expiry:', user.otpExpiry)
-    console.log('📝 isVerified:', user.isVerified)
 
     if (user.isVerified) {
       console.log('✅ Email already verified')
@@ -78,7 +75,6 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ User verified successfully!')
 
-    // ✅ ✅ ✅ FIX: Await the token generation
     const token = await generateToken(user.id, user.email, user.role)
 
     let redirectUrl = '/dashboard'
@@ -110,16 +106,16 @@ export async function POST(request: NextRequest) {
       redirectUrl,
     })
 
-    // ✅ ✅ ✅ FIX: Set the cookie correctly
+    // ✅ ✅ ✅ FIX: Set cookie WITHOUT secure flag for localhost
     response.cookies.set('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // ✅ MUST be false for localhost (true only in production)
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
     })
 
-    console.log('✅ Cookie set with token:', token.substring(0, 20) + '...')
+    console.log('✅ Cookie set for middleware')
 
     return response
   } catch (error) {

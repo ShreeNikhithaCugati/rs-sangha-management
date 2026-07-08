@@ -1,3 +1,4 @@
+//app/admin/submit-form/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -28,27 +29,34 @@ export default function SubmitFormPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
+  const token = localStorage.getItem('token')
+  console.log('🔍 SubmitForm - Token from localStorage:', token ? 'Yes (' + token.substring(0, 20) + '...)' : 'No')
+  
+  if (!token) {
+    console.log('❌ SubmitForm - No token found, redirecting to login')
+    router.push('/login')
+    return
+  }
 
-    // Pre-fill admin details from user
-    const userStr = localStorage.getItem('user')
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr)
-        setFormData(prev => ({
-          ...prev,
-          adminName: user.name || '',
-          adminEmail: user.email || '',
-        }))
-      } catch (e) {
-        console.error('Error parsing user:', e)
-      }
+  console.log('✅ SubmitForm - Token found, showing form')
+
+  // Pre-fill admin details from user
+  const userStr = localStorage.getItem('user')
+  console.log('🔍 SubmitForm - User from localStorage:', userStr ? 'Yes' : 'No')
+  
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr)
+      setFormData(prev => ({
+        ...prev,
+        adminName: user.name || '',
+        adminEmail: user.email || '',
+      }))
+    } catch (e) {
+      console.error('Error parsing user:', e)
     }
-  }, [])
+  }
+}, [])
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

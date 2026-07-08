@@ -45,6 +45,7 @@ export default function SignupPage() {
   }
 
   const handleSignup = async (e: React.FormEvent) => {
+    alert('60');
     e.preventDefault()
     setError('')
     setSuccessMessage('')
@@ -93,6 +94,7 @@ export default function SignupPage() {
   }
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
+    alert('30');
     e.preventDefault()
     setLoading(true)
     setError('')
@@ -117,6 +119,7 @@ export default function SignupPage() {
       
       // ✅ FIX: Use redirectUrl from API
       setTimeout(() => {
+        alert('useRedirect');
         const redirectUrl = data.redirectUrl || '/dashboard'
         router.push(redirectUrl)
       }, 1500)
@@ -215,8 +218,9 @@ export default function SignupPage() {
             )}
 
             <button
-              type="submit"
+              type="button"
               disabled={loading}
+              onClick={(e) => {alert('verify OTP from signup'); handleVerifyOTP(e)}}
               style={{
                 width: '100%',
                 padding: '14px',
@@ -652,7 +656,8 @@ export default function SignupPage() {
           )}
 
           <button
-            type="submit"
+            type="button"
+            onClick={(e) => {alert('30'); handleSignup(e);}}
             disabled={loading}
             style={{
               width: '100%',
