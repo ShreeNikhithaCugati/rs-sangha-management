@@ -114,13 +114,12 @@ export default function SuperAdminDashboard() {
             </h1>
           </div>
 
-          {/* Stats Cards - ONLY THESE 3 CARDS */}
+          {/* Stats Cards */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: '24px',
           }}>
-            {/* Card 1: Total Sanghas */}
             <div style={{
               background: 'rgba(255,255,255,0.08)',
               backdropFilter: 'blur(10px)',
@@ -138,12 +137,7 @@ export default function SuperAdminDashboard() {
               e.currentTarget.style.transform = 'translateY(0)'
               e.currentTarget.style.boxShadow = 'none'
             }}>
-              <div style={{
-                fontSize: '48px',
-                marginBottom: '8px'
-              }}>
-                🏛️
-              </div>
+              <div style={{ fontSize: '48px', marginBottom: '8px' }}>🏛️</div>
               <p style={{
                 color: '#a5b4fc',
                 fontSize: '14px',
@@ -164,7 +158,6 @@ export default function SuperAdminDashboard() {
               </p>
             </div>
 
-            {/* Card 2: Admins Assigned */}
             <div style={{
               background: 'rgba(255,255,255,0.08)',
               backdropFilter: 'blur(10px)',
@@ -182,12 +175,7 @@ export default function SuperAdminDashboard() {
               e.currentTarget.style.transform = 'translateY(0)'
               e.currentTarget.style.boxShadow = 'none'
             }}>
-              <div style={{
-                fontSize: '48px',
-                marginBottom: '8px'
-              }}>
-                👤
-              </div>
+              <div style={{ fontSize: '48px', marginBottom: '8px' }}>👤</div>
               <p style={{
                 color: '#a5b4fc',
                 fontSize: '14px',
@@ -208,7 +196,6 @@ export default function SuperAdminDashboard() {
               </p>
             </div>
 
-            {/* Card 3: Total Members */}
             <div style={{
               background: 'rgba(255,255,255,0.08)',
               backdropFilter: 'blur(10px)',
@@ -226,12 +213,7 @@ export default function SuperAdminDashboard() {
               e.currentTarget.style.transform = 'translateY(0)'
               e.currentTarget.style.boxShadow = 'none'
             }}>
-              <div style={{
-                fontSize: '48px',
-                marginBottom: '8px'
-              }}>
-                👥
-              </div>
+              <div style={{ fontSize: '48px', marginBottom: '8px' }}>👥</div>
               <p style={{
                 color: '#a5b4fc',
                 fontSize: '14px',

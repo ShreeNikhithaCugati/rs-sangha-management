@@ -20,6 +20,7 @@ try {
   console.error('❌ Email configuration error:', error)
 }
 
+// ==================== OTP EMAIL ====================
 export const sendOTPEmail = async (email: string, otp: string): Promise<void> => {
   const otpString = String(otp).padStart(6, '0')
   
@@ -68,10 +69,12 @@ export const sendOTPEmail = async (email: string, otp: string): Promise<void> =>
   }
 }
 
+// ==================== GENERATE OTP ====================
 export const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
+// ==================== APPROVAL EMAIL ====================
 export const sendApprovalEmail = async (email: string, name: string, sanghaId: string, username: string) => {
   console.log(`📧 [APPROVAL] To: ${email}, Sangha ID: ${sanghaId}`)
   
@@ -132,6 +135,7 @@ export const sendApprovalEmail = async (email: string, name: string, sanghaId: s
   }
 }
 
+// ==================== REJECTION EMAIL ====================
 export const sendRejectionEmail = async (email: string, name: string, reason: string) => {
   console.log(`📧 [REJECTION] To: ${email}, Reason: ${reason}`)
   
@@ -183,7 +187,7 @@ export const sendRejectionEmail = async (email: string, name: string, reason: st
   }
 }
 
-// ⭐⭐⭐ NEW: Send Admin Credentials Email ⭐⭐⭐
+// ==================== ADMIN CREDENTIALS EMAIL ====================
 export const sendAdminCredentialsEmail = async (
   email: string,
   name: string,
@@ -278,5 +282,137 @@ export const sendAdminCredentialsEmail = async (
     console.log(`✅ Admin credentials email sent to: ${email}`)
   } catch (error) {
     console.error(`❌ Failed to send admin credentials email to ${email}:`, error)
+  }
+}
+
+// ==================== REACTIVATION REQUEST EMAIL ====================
+export const sendReactivationRequestEmail = async (
+  email: string,
+  name: string,
+  sanghaId: string,
+  reason: string
+) => {
+  console.log(`📧 [REACTIVATION REQUEST] To: ${email}`)
+  
+  if (!transporter) {
+    console.log('⚠️ Email not sent (transporter not configured)')
+    return
+  }
+
+  const mailOptions = {
+    from: `"RS Associates" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: '📋 Sangha Reactivation Request Submitted',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8fafc; border-radius: 12px;">
+        <div style="text-align: center; padding: 20px 0;">
+          <h1 style="color: #4F46E5; margin: 0;">🏛️ RS Associates</h1>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <h2 style="color: #1e293b; margin-top: 0;">Hi ${name},</h2>
+          
+          <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+            Your reactivation request for Sangha <strong>${sanghaId}</strong> has been submitted successfully!
+          </p>
+          
+          <div style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 0; font-size: 14px; color: #334155;">
+              <strong>Reason:</strong> ${reason}
+            </p>
+          </div>
+          
+          <p style="color: #475569; font-size: 14px;">
+            The Super Admin will review your request and notify you once it's approved or rejected.
+          </p>
+        </div>
+        
+        <div style="text-align: center; padding: 20px 0; color: #94a3b8; font-size: 12px;">
+          <p>© 2026 RS Associates. All rights reserved.</p>
+        </div>
+      </div>
+    `,
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+    console.log(`✅ Reactivation request email sent to: ${email}`)
+  } catch (error) {
+    console.error(`❌ Failed to send email to ${email}:`, error)
+  }
+}
+
+// ==================== REACTIVATION RESULT EMAIL ====================
+export const sendReactivationResultEmail = async (
+  email: string,
+  name: string,
+  sanghaId: string,
+  status: 'approved' | 'rejected',
+  reason?: string
+) => {
+  console.log(`📧 [REACTIVATION RESULT] To: ${email}, Status: ${status}`)
+  
+  if (!transporter) {
+    console.log('⚠️ Email not sent (transporter not configured)')
+    return
+  }
+
+  const isApproved = status === 'approved'
+  
+  const mailOptions = {
+    from: `"RS Associates" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: isApproved ? '✅ Sangha Reactivation Approved!' : '❌ Sangha Reactivation Rejected',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8fafc; border-radius: 12px;">
+        <div style="text-align: center; padding: 20px 0;">
+          <h1 style="color: #4F46E5; margin: 0;">🏛️ RS Associates</h1>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <h2 style="color: #1e293b; margin-top: 0;">Hi ${name},</h2>
+          
+          ${isApproved ? `
+            <p style="color: #22c55e; font-size: 18px; font-weight: 600;">
+              ✅ Your Sangha has been reactivated!
+            </p>
+            <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+              Your Sangha <strong>${sanghaId}</strong> has been successfully reactivated by the Super Admin.
+            </p>
+            <p style="color: #475569; font-size: 14px;">
+              You can now login and manage your Sangha again.
+            </p>
+          ` : `
+            <p style="color: #ef4444; font-size: 18px; font-weight: 600;">
+              ❌ Reactivation Request Rejected
+            </p>
+            <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+              Your reactivation request for Sangha <strong>${sanghaId}</strong> has been rejected.
+            </p>
+            ${reason ? `
+              <div style="background: #fef2f2; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                <p style="color: #dc2626; margin: 0; font-size: 14px;">
+                  <strong>Reason:</strong> ${reason}
+                </p>
+              </div>
+            ` : ''}
+            <p style="color: #475569; font-size: 14px;">
+              If you have any questions, please contact the Super Admin.
+            </p>
+          `}
+        </div>
+        
+        <div style="text-align: center; padding: 20px 0; color: #94a3b8; font-size: 12px;">
+          <p>© 2026 RS Associates. All rights reserved.</p>
+        </div>
+      </div>
+    `,
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+    console.log(`✅ Reactivation result email sent to: ${email}`)
+  } catch (error) {
+    console.error(`❌ Failed to send email to ${email}:`, error)
   }
 }

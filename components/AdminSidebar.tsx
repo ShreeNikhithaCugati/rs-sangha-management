@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation'
 import { useState } from 'react'
 
-export default function SuperAdminSidebar() {
+export default function AdminSidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
@@ -11,34 +11,29 @@ export default function SuperAdminSidebar() {
   const menuItems = [
     { 
       name: 'Dashboard', 
-      path: '/dashboard/superadmin', 
+      path: '/dashboard/admin', 
       icon: '📊' 
     },
     { 
-      name: 'View All Sanghas', 
-      path: '/dashboard/superadmin/sanghas', 
-      icon: '🏛️' 
-    },
-    { 
-      name: 'Create Sangha', 
-      path: '/dashboard/superadmin/create-sangha', 
-      icon: '➕' 
-    },
-    { 
-      name: 'Create Admin', 
-      path: '/dashboard/superadmin/create-admin', 
+      name: 'Create Members', 
+      path: '/dashboard/admin/create-members', 
       icon: '👤' 
     },
     { 
-      name: 'Sangha Requests', 
-      path: '/dashboard/superadmin/requests', 
-      icon: '📝' 
+      name: 'Members List', 
+      path: '/dashboard/admin/members', 
+      icon: '📋' 
     },
     { 
-      name: 'Activation Requests', 
-      path: '/dashboard/superadmin/reactivation-requests', 
-      icon: '🔄' 
+      name: 'Ledger', 
+      path: '/dashboard/admin/ledger', 
+      icon: '📒' 
     },
+    { 
+      name: 'Savings', 
+      path: '/dashboard/admin/savings', 
+      icon: '💰' 
+    }
   ]
 
   const handleLogout = () => {
@@ -47,12 +42,7 @@ export default function SuperAdminSidebar() {
     router.push('/login')
   }
 
-  // ⭐ FIX: Better active state detection
   const isActive = (path: string) => {
-    // Exact match or starts with path (but not for dashboard to avoid conflicts)
-    if (path === '/dashboard/superadmin') {
-      return pathname === path
-    }
     return pathname === path || pathname?.startsWith(path + '/')
   }
 
@@ -120,7 +110,7 @@ export default function SuperAdminSidebar() {
             margin: '4px 0 0 0',
             letterSpacing: '0.5px',
           }}>
-            Super Admin Panel
+            Admin Panel
           </p>
         </div>
 
@@ -129,59 +119,56 @@ export default function SuperAdminSidebar() {
           flex: 1,
           padding: '16px 12px',
         }}>
-          {menuItems.map((item) => {
-            const active = isActive(item.path)
-            return (
-              <button
-                key={item.path}
-                onClick={() => {
-                  router.push(item.path)
-                  setIsOpen(false)
-                }}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  padding: '12px 16px',
-                  marginBottom: '4px',
-                  background: active ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
-                  border: 'none',
-                  borderRadius: '10px',
-                  color: active ? 'white' : '#a5b4fc',
-                  fontSize: '15px',
-                  fontWeight: active ? '600' : '400',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  textAlign: 'left',
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
-                    e.currentTarget.style.color = 'white'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = '#a5b4fc'
-                  }
-                }}
-              >
-                <span style={{ fontSize: '20px' }}>{item.icon}</span>
-                <span>{item.name}</span>
-                {active && (
-                  <span style={{
-                    marginLeft: 'auto',
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: '#818cf8',
-                  }} />
-                )}
-              </button>
-            )
-          })}
+          {menuItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => {
+                router.push(item.path)
+                setIsOpen(false)
+              }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                padding: '12px 16px',
+                marginBottom: '4px',
+                background: isActive(item.path) ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+                border: 'none',
+                borderRadius: '10px',
+                color: isActive(item.path) ? 'white' : '#a5b4fc',
+                fontSize: '15px',
+                fontWeight: isActive(item.path) ? '600' : '400',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive(item.path)) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                  e.currentTarget.style.color = 'white'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive(item.path)) {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = '#a5b4fc'
+                }
+              }}
+            >
+              <span style={{ fontSize: '20px' }}>{item.icon}</span>
+              <span>{item.name}</span>
+              {isActive(item.path) && (
+                <span style={{
+                  marginLeft: 'auto',
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: '#818cf8',
+                }} />
+              )}
+            </button>
+          ))}
         </nav>
 
         {/* Bottom Section - Logout */}

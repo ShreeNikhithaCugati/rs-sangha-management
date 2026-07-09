@@ -14,8 +14,8 @@ model User {
   password     String
   name         String
   phone        String?
-  address      String?   // ✅ ADD THIS - was missing
-  aadharNumber String?   // ✅ ADD THIS - was missing
+  address      String?
+  aadharNumber String?
   role         Role     @default(MEMBER)
   isVerified   Boolean  @default(false)
   isActive     Boolean  @default(true)
@@ -51,6 +51,9 @@ model Sangha {
   
   admin        User?    @relation("SanghaAdmin")
   members      Member[]
+  
+  // ⭐ ADDED: Opposite relation for reactivation requests
+  reactivationRequests SanghaReactivationRequest[] 
 }
 
 model Member {
@@ -96,6 +99,24 @@ model SanghaRequest {
   admin           User     @relation(fields: [adminId], references: [id])
 }
 
+model SanghaReactivationRequest {
+  id              String   @id @default(cuid())
+  sanghaId        String
+  adminName       String
+  adminEmail      String
+  adminPhone      String
+  reason          String
+  additionalInfo  String?
+  status          ReactivationStatus @default(PENDING)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  rejectionReason String?
+  
+  sangha          Sangha   @relation(fields: [sanghaId], references: [id])
+}
+
 enum Role {
   SUPERADMIN
   ADMIN
@@ -103,6 +124,12 @@ enum Role {
 }
 
 enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReactivationStatus {
   PENDING
   APPROVED
   REJECTED
